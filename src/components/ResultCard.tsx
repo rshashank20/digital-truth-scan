@@ -46,6 +46,32 @@ const ResultCard = ({ result, className = '' }: ResultCardProps) => {
     }
   };
 
+  const getResultDisplay = (resultType: string) => {
+    switch (resultType) {
+      case 'Real':
+        return 'Looks Real ✅';
+      case 'Likely AI':
+        return 'Looks AI 🤖';
+      case 'Inconclusive':
+        return 'Not Sure ❓';
+      default:
+        return resultType;
+    }
+  };
+
+  const getTypeDisplay = (type: string) => {
+    switch (type) {
+      case 'image':
+        return 'Image';
+      case 'video':
+        return 'Video';
+      case 'text':
+        return 'Text';
+      default:
+        return type;
+    }
+  };
+
   const colors = getResultColor(result.result);
   const ResultIcon = colors.icon;
 
@@ -58,7 +84,7 @@ const ResultCard = ({ result, className = '' }: ResultCardProps) => {
               {getTypeIcon(result.type)}
             </div>
             <div>
-              <h3 className="font-semibold text-foreground capitalize">{result.type} Analysis</h3>
+              <h3 className="font-semibold text-foreground">{getTypeDisplay(result.type)} Analysis</h3>
               <p className="text-sm text-muted-foreground">
                 {result.filename || (result.textPreview && `"${result.textPreview.slice(0, 50)}..."`)}
               </p>
@@ -67,13 +93,13 @@ const ResultCard = ({ result, className = '' }: ResultCardProps) => {
           
           <Badge className={`${colors.badge} shadow-custom-sm flex items-center space-x-1`}>
             <ResultIcon size={14} />
-            <span>{result.result}</span>
+            <span>{getResultDisplay(result.result)}</span>
           </Badge>
         </div>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-foreground">Confidence</span>
+            <span className="text-sm font-medium text-foreground">How sure we are:</span>
             <span className="text-sm font-semibold text-foreground">{result.confidence}%</span>
           </div>
           
@@ -84,7 +110,7 @@ const ResultCard = ({ result, className = '' }: ResultCardProps) => {
           
           <div className="flex items-center space-x-1 text-xs text-muted-foreground">
             <Clock size={12} />
-            <span>{result.timestamp.toLocaleString()}</span>
+            <span>Checked on: {result.timestamp.toLocaleString()}</span>
           </div>
         </div>
       </CardContent>
