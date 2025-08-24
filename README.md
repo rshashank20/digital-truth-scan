@@ -6,20 +6,21 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)](https://fastapi.tiangolo.com/)
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/)
+[![OpenCV](https://img.shields.io/badge/OpenCV-4.8.1-orange.svg)](https://opencv.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A comprehensive web application that detects AI-generated content in images, videos, and text using state-of-the-art machine learning models. Built with React + TypeScript frontend and FastAPI backend.
+A comprehensive web application that detects AI-generated content in images, videos, and text using state-of-the-art machine learning models. Built with React + TypeScript frontend and FastAPI backend, featuring advanced preprocessing and robust detection algorithms.
 
 ## ✨ Features
 
 ### 🔍 **Multi-Modal Detection**
-- **🖼️ Image Analysis**: Detect AI-generated images using `orion-ai/ai-image-detector`
-- **🎥 Video Processing**: Extract frames and analyze video content with FFmpeg
-- **📝 Text Analysis**: Identify AI-generated text using `roberta-base-openai-detector`
+- **🖼️ Image Analysis**: Detect AI-generated images using `orion-ai/ai-image-detector` with optimal preprocessing
+- **🎥 Video Processing**: Advanced frame extraction with quality filtering and robust statistics
+- **📝 Text Analysis**: Identify AI-generated text using `roberta-base-openai-detector` with enhanced tokenization
 
 ### 🎨 **Modern Frontend**
 - **Responsive Design**: Works seamlessly on desktop and mobile devices
-- **Real-time Results**: Instant detection results with confidence scores
+- **Real-time Results**: Instant detection results with dual probability scores
 - **File Upload**: Drag & drop support for images and videos
 - **History Tracking**: Save and review previous detection results
 - **Beautiful UI**: Built with Tailwind CSS and shadcn/ui components
@@ -27,9 +28,16 @@ A comprehensive web application that detects AI-generated content in images, vid
 ### ⚡ **High-Performance Backend**
 - **FastAPI Framework**: Modern, fast Python web framework
 - **GPU Acceleration**: CUDA support for faster inference
+- **Advanced Preprocessing**: HuggingFace AutoImageProcessor for optimal model performance
+- **Quality Filtering**: Laplacian variance-based blur detection for video frames
 - **CORS Enabled**: Ready for frontend integration
-- **RESTful API**: Clean, documented endpoints
-- **Error Handling**: Comprehensive error management
+- **RESTful API**: Clean, documented endpoints with comprehensive responses
+
+### 🔬 **Enhanced Detection Capabilities**
+- **Conservative Verdict Policy**: Reduces false positives on real content
+- **Dual Probability Output**: Both AI and real probabilities for transparency
+- **Robust Video Analysis**: Trimmed mean statistics and quality filtering
+- **Debug Mode**: Environment variable controlled logging for development
 
 ## 🏗️ Architecture
 
@@ -43,9 +51,10 @@ digital-truth-scan/
 │   │   └── services/          # API integration
 │   └── package.json
 ├── 📁 backend/                  # FastAPI Python service
-│   ├── main.py                # FastAPI application
-│   ├── detectors.py           # AI detection logic
-│   └── requirements.txt       # Python dependencies
+│   ├── main.py                # FastAPI application with CORS
+│   ├── detectors.py           # Advanced AI detection logic
+│   ├── requirements.txt       # Python dependencies
+│   └── run.py                 # Server startup script
 └── README.md
 ```
 
@@ -55,6 +64,7 @@ digital-truth-scan/
 - **Node.js** 18+ and **npm**/**yarn**
 - **Python** 3.8+
 - **FFmpeg** (for video processing)
+- **OpenCV** (automatically installed via pip)
 
 ### 1. Clone the Repository
 ```bash
@@ -97,7 +107,7 @@ Backend will be available at `http://localhost:8000`
 ## 📡 API Endpoints
 
 ### POST `/detect`
-Detect AI-generated content in uploaded files or text.
+Detect AI-generated content in uploaded files or text with enhanced response format.
 
 **Request:**
 ```bash
@@ -110,13 +120,22 @@ curl -X POST "http://localhost:8000/detect" \
      -d "text=This is some text to analyze"
 ```
 
-**Response:**
+**Enhanced Response:**
 ```json
 {
   "type": "image|video|text",
   "result": "real|likely_ai|inconclusive",
   "confidence": 0.0-1.0,
-  "checked_at": "2024-01-01T12:00:00Z"
+  "ai_prob": 0.0-1.0,
+  "real_prob": 0.0-1.0,
+  "checked_at": "2024-01-01T12:00:00Z",
+  "frame_stats": {
+    "n_frames": 32,
+    "pct_high": 75.0,
+    "pct_low": 15.0,
+    "final_prob": 0.8234,
+    "quality_threshold": 80
+  }
 }
 ```
 
@@ -125,6 +144,27 @@ API information and available endpoints.
 
 ### GET `/health`
 Health check endpoint.
+
+## 🔬 Detection Algorithms
+
+### 🖼️ **Image Detection**
+- **Model**: `orion-ai/ai-image-detector`
+- **Preprocessing**: HuggingFace AutoImageProcessor for optimal performance
+- **Verdict Policy**: Conservative thresholds (AI ≥ 85%, Real ≤ 25%, else Inconclusive)
+- **Output**: Dual probabilities for transparency
+
+### 🎥 **Video Detection**
+- **Frame Sampling**: 1 FPS up to 64 frames maximum
+- **Quality Filtering**: Laplacian variance threshold (80) to exclude blurry frames
+- **Robust Statistics**: Trimmed mean of top 50% AI probability frames
+- **Enhanced Verdict**: Combines final probability with percentage statistics
+- **Frame Analysis**: Comprehensive statistics for transparency
+
+### 📝 **Text Detection**
+- **Model**: `roberta-base-openai-detector`
+- **Tokenization**: Optimized with padding and truncation
+- **Probability Mapping**: Correct HuggingFace label order `[real_prob, fake_prob]`
+- **Verdict Policy**: Same conservative thresholds as image detection
 
 ## 🛠️ Development
 
@@ -141,6 +181,17 @@ npm run lint         # Run ESLint
 cd backend
 python run.py        # Start with auto-reload
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Debug Mode
+Enable detailed logging for development:
+```bash
+# Set environment variable
+set DETECTOR_DEBUG=true  # Windows
+# export DETECTOR_DEBUG=true  # macOS/Linux
+
+# Run backend
+python run.py
 ```
 
 ### API Documentation
@@ -173,16 +224,28 @@ VITE_API_URL=http://localhost:8000
 
 **Backend (.env):**
 ```env
+DETECTOR_DEBUG=false
 MODEL_CACHE_DIR=./models
 MAX_FILE_SIZE=104857600  # 100MB
 ```
 
-## 📊 Performance Notes
+## 📊 Performance & Quality
 
+### **Detection Accuracy**
+- **Conservative Policy**: Biased towards "inconclusive" to reduce false positives
+- **Quality Filtering**: Automatic exclusion of low-quality video frames
+- **Robust Statistics**: Trimmed mean aggregation for reliable video analysis
+
+### **Performance Notes**
 - **First Request**: Models load on first use (10-30 seconds)
 - **GPU Acceleration**: Automatic CUDA detection for faster inference
-- **Video Processing**: Frame extraction every 2 seconds for optimal performance
-- **Memory Management**: Automatic cleanup of temporary files
+- **Video Processing**: Optimized frame extraction with quality filtering
+- **Memory Management**: Automatic cleanup of temporary files and frames
+
+### **Quality Thresholds**
+- **Image/Text**: AI ≥ 85% → "likely_ai", Real ≤ 25% → "real"
+- **Video**: Enhanced rules with frame statistics and percentage thresholds
+- **Frame Quality**: Laplacian variance ≥ 80 for clear, non-blurry frames
 
 ## 🐛 Troubleshooting
 
@@ -205,13 +268,18 @@ MAX_FILE_SIZE=104857600  # 100MB
    - Frontend: Change port in `vite.config.ts`
    - Backend: Use `python run.py 8001` for different port
 
+5. **OpenCV installation issues**
+   - Ensure Python 3.8+ compatibility
+   - Try: `pip install --upgrade opencv-python`
+
 ### Debug Mode
 ```bash
 # Frontend
 npm run dev -- --debug
 
 # Backend
-uvicorn main:app --log-level debug
+set DETECTOR_DEBUG=true  # Windows
+python run.py
 ```
 
 ## 🤝 Contributing
@@ -232,6 +300,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **FastAPI** for the excellent Python web framework
 - **React** and **TypeScript** for the frontend framework
 - **Tailwind CSS** and **shadcn/ui** for the beautiful UI components
+- **OpenCV** for advanced image processing capabilities
+- **FFmpeg** for robust video frame extraction
 
 ## 📞 Support
 
