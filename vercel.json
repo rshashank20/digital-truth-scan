@@ -11,8 +11,17 @@
   ],
   "routes": [
     {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "app/api/**/*.py": {
+      "runtime": "python3.11"
+    }
+  }
 }
