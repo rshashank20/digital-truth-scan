@@ -66,6 +66,10 @@ digital-truth-scan/
 - **FFmpeg** (for video processing)
 - **OpenCV** (automatically installed via pip)
 
+### 🚀 **Deployment Options**
+- **Local Development**: Run both frontend and backend locally
+- **Production**: Deploy backend to Render and frontend to Vercel
+
 ### 1. Clone the Repository
 ```bash
 git clone https://github.com/rshashank20/digital-truth-scan.git
@@ -166,15 +170,73 @@ Health check endpoint.
 - **Probability Mapping**: Correct HuggingFace label order `[real_prob, fake_prob]`
 - **Verdict Policy**: Same conservative thresholds as image detection
 
+## 🚀 **Production Deployment**
+
+### **Backend Deployment (Render)**
+
+1. **Push to GitHub**
+   ```bash
+   git add .
+   git commit -m "Add deployment configurations"
+   git push origin main
+   ```
+
+2. **Connect to Render**
+   - Go to [render.com](https://render.com) and sign up/login
+   - Click "New +" → "Web Service"
+   - Connect your GitHub repository
+   - Render will automatically detect the `render.yaml` configuration
+   - Service will be named: `digital-truth-scan-backend`
+
+3. **Environment Variables**
+   - Render will automatically set Python 3.11 and port 10000
+   - The service will be available at: `https://your-service-name.onrender.com`
+
+### **Frontend Deployment (Vercel)**
+
+1. **Connect to Vercel**
+   - Go to [vercel.com](https://vercel.com) and sign up/login
+   - Click "New Project"
+   - Import your GitHub repository
+   - Vercel will automatically detect it's a React app
+
+2. **Set Environment Variables**
+   - In your Vercel project dashboard, go to "Settings" → "Environment Variables"
+   - Add: `VITE_API_URL` = `https://your-backend-name.onrender.com`
+   - Replace `your-backend-name` with your actual Render service name
+
+3. **Deploy**
+   - Vercel will automatically build and deploy your frontend
+   - Your app will be available at: `https://your-project-name.vercel.app`
+
+### **Linking Frontend & Backend**
+
+- **Frontend**: Will make API calls to your Render backend
+- **Backend**: Will receive requests from your Vercel frontend
+- **CORS**: Already configured in `main.py` to allow all origins
+
+---
+
 ## 🛠️ Development
 
-### Frontend Development
-```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-npm run lint         # Run ESLint
-```
+### **Local Development Setup**
+
+1. **Environment Configuration**
+   ```bash
+   # Copy environment template
+   cp env.example .env
+   
+   # Edit .env file
+   VITE_API_URL=http://localhost:8000
+   ```
+
+2. **Frontend Development**
+   ```bash
+   npm run dev          # Start development server
+   npm run build        # Build for production
+   npm run preview      # Preview production build
+   npm run lint         # Run ESLint
+   ```
 
 ### Backend Development
 ```bash
@@ -219,7 +281,11 @@ Create `.env` files for configuration:
 
 **Frontend (.env):**
 ```env
+# Local development
 VITE_API_URL=http://localhost:8000
+
+# Production (after deployment)
+# VITE_API_URL=https://your-backend-name.onrender.com
 ```
 
 **Backend (.env):**
