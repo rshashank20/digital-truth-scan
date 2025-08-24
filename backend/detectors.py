@@ -76,14 +76,16 @@ class AIDetector:
                     print(f"Image detection - Labels: {self.image_labels}")
                     print(f"Image detection - Input shape: {inputs['pixel_values'].shape}")
                 
-                # Conservative verdict policy to reduce false positives on real content
-                # We bias towards "inconclusive" in uncertain cases to avoid misclassifying real content as AI
-                if ai_prob >= 0.85:
-                    result = "likely_ai"
-                elif ai_prob <= 0.25:
-                    result = "real"
+                # Normalized confidence thresholds for clear classification
+                # If confidence > 0.7 → return "Likely AI-Generated"  
+                # If confidence < 0.3 → return "Likely Human-Created"  
+                # Otherwise (0.3–0.7) → return "Unclear / Mixed"
+                if ai_prob > 0.7:
+                    result = "Likely AI-Generated"
+                elif ai_prob < 0.3:
+                    result = "Likely Human-Created"
                 else:
-                    result = "inconclusive"
+                    result = "Unclear / Mixed"
                 
                 # Return AI probability as confidence for transparency
                 confidence = ai_prob
@@ -92,9 +94,9 @@ class AIDetector:
                 
         except Exception as e:
             print(f"Error detecting image: {e}")
-            return "inconclusive", 0.0, 0.0, 0.0
+            return "Unclear / Mixed", 0.0, 0.0, 0.0
     
-    def detect_image_from_array(self, image_array: np.ndarray) -> Tuple[str, float]:
+    def detect_image_from_array(self, image_array: np.ndarray) -> Tuple[str, float, float, float]:
         """Detect if an image array is AI-generated (for video frame processing)."""
         try:
             # Convert numpy array to PIL Image
@@ -119,23 +121,25 @@ class AIDetector:
                     print(f"Array image detection - Probabilities: {probs}")
                     print(f"Array image detection - AI prob: {ai_prob:.4f}, Real prob: {real_prob:.4f}")
                 
-                # Conservative verdict policy to reduce false positives on real content
-                # We bias towards "inconclusive" in uncertain cases to avoid misclassifying real content as AI
-                if ai_prob >= 0.85:
-                    result = "likely_ai"
-                elif ai_prob <= 0.25:
-                    result = "real"
+                # Normalized confidence thresholds for clear classification
+                # If confidence > 0.7 → return "Likely AI-Generated"  
+                # If confidence < 0.3 → return "Likely Human-Created"  
+                # Otherwise (0.3–0.7) → return "Unclear / Mixed"
+                if ai_prob > 0.7:
+                    result = "Likely AI-Generated"
+                elif ai_prob < 0.3:
+                    result = "Likely Human-Created"
                 else:
-                    result = "inconclusive"
+                    result = "Unclear / Mixed"
                 
                 # Return AI probability as confidence for transparency
                 confidence = ai_prob
                 
-                return result, confidence
+                return result, confidence, ai_prob, real_prob
                 
         except Exception as e:
             print(f"Error detecting image from array: {e}")
-            return "inconclusive", 0.0
+            return "Unclear / Mixed", 0.0, 0.0, 0.0
     
     def detect_video(self, video_path: str) -> Tuple[str, float, Dict]:
         """Detect if a video contains AI-generated content by analyzing frames."""
@@ -214,7 +218,7 @@ class AIDetector:
             os.rmdir(frames_dir)
             
             if not ai_probs:
-                return "inconclusive", 0.0, {"frame_stats": frame_stats, "n_frames": 0, "pct_high": 0, "pct_low": 0}
+                return "Unclear / Mixed", 0.0, {"frame_stats": frame_stats, "n_frames": 0, "pct_high": 0, "pct_low": 0}
             
             # Calculate robust statistics
             ai_probs = np.array(ai_probs)
@@ -225,17 +229,17 @@ class AIDetector:
             trim_size = n_frames // 2
             final_prob = np.mean(sorted_probs[-trim_size:])
             
-            # Calculate percentage statistics
-            pct_high = np.sum(ai_probs >= 0.7) / n_frames * 100
-            pct_low = np.sum(ai_probs <= 0.3) / n_frames * 100
+            # Calculate percentage statistics using new thresholds
+            pct_high = np.sum(ai_probs > 0.7) / n_frames * 100
+            pct_low = np.sum(ai_probs < 0.3) / n_frames * 100
             
-            # Enhanced verdict rules with robust statistics
-            if final_prob >= 0.85 and pct_high >= 70:
-                result = "likely_ai"
-            elif final_prob <= 0.25 and pct_low >= 70:
-                result = "real"
+            # Enhanced verdict rules with normalized confidence thresholds
+            if final_prob > 0.7 and pct_high >= 70:
+                result = "Likely AI-Generated"
+            elif final_prob < 0.3 and pct_low >= 70:
+                result = "Likely Human-Created"
             else:
-                result = "inconclusive"
+                result = "Unclear / Mixed"
             
             # Enhanced frame statistics for transparency
             enhanced_stats = {
@@ -251,7 +255,7 @@ class AIDetector:
             
         except Exception as e:
             print(f"Error detecting video: {e}")
-            return "inconclusive", 0.0, {}
+            return "Unclear / Mixed", 0.0, {}
     
     def detect_text(self, text: str) -> Tuple[str, float, float, float]:
         """Detect if text is AI-generated using the roberta-base-openai-detector model."""
@@ -281,13 +285,13 @@ class AIDetector:
                 print(f"Text detection - AI prob: {ai_prob:.4f}, Real prob: {real_prob:.4f}")
                 print(f"Text detection - Labels: {self.text_labels}")
             
-            # Decide verdict
-            if ai_prob >= 0.85:
-                result = "likely_ai"
-            elif ai_prob <= 0.25:
-                result = "real"
+            # Normalized confidence thresholds for clear classification
+            if ai_prob > 0.7:
+                result = "Likely AI-Generated"
+            elif ai_prob < 0.3:
+                result = "Likely Human-Created"
             else:
-                result = "inconclusive"
+                result = "Unclear / Mixed"
             
             # Return AI probability as confidence for transparency
             confidence = ai_prob
@@ -296,7 +300,7 @@ class AIDetector:
                 
         except Exception as e:
             print(f"Error detecting text: {e}")
-            return "inconclusive", 0.0, 0.0, 0.0
+            return "Unclear / Mixed", 0.0, 0.0, 0.0
     
     def detect(self, content_type: str, content_path: str = None, text: str = None) -> dict:
         """Main detection method that routes to appropriate detector."""
@@ -329,9 +333,9 @@ class AIDetector:
             response = {
                 "type": content_type,
                 "result": result,
-                "confidence": round(confidence, 4),
-                "ai_prob": round(ai_prob, 4),
-                "real_prob": round(real_prob, 4),
+                "confidence": round(confidence, 2),
+                "ai_prob": round(ai_prob, 2),
+                "real_prob": round(real_prob, 2),
                 "checked_at": checked_at
             }
             
@@ -345,7 +349,7 @@ class AIDetector:
             print(f"Detection error: {e}")
             return {
                 "type": content_type,
-                "result": "inconclusive",
+                "result": "Unclear / Mixed",
                 "confidence": 0.0,
                 "checked_at": checked_at
             }
